@@ -12,6 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from keystoneauth import filter_factory
+from swiftpolicy import filter_factory
 
-__all__ = [filter_factory]
+__all__ = [filter_factory, 'version_info', 'version']
+
+#: Version information ``(major, minor, revision)``.
+version_info = (1, 0, 0)
+#: Version string ``'major.minor.revision'``.
+version = '.'.join(map(str, version_info))

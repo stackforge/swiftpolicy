@@ -20,19 +20,19 @@ from swift.common.utils import register_swift_info
 from enforcer import get_enforcer
 
 
-class KeystoneAuth(object):
+class SwiftPolicy(object):
     """Swift middleware to Keystone authorization system.
 
     In Swift's proxy-server.conf add this middleware to your pipeline::
 
         [pipeline:main]
-        pipeline = catch_errors cache authtoken keystoneauth proxy-server
+        pipeline = catch_errors cache authtoken swiftpolicy proxy-server
 
     Make sure you have the authtoken middleware before the
-    keystoneauth middleware.
+    swiftpolicy middleware.
 
     The authtoken middleware will take care of validating the user and
-    keystoneauth will authorize access.
+    swiftpolicy will authorize access.
 
     The authtoken middleware is shipped directly with keystone it
     does not have any other dependences than itself so you can either
@@ -53,8 +53,8 @@ class KeystoneAuth(object):
 
     And add a swift authorization filter section, such as::
 
-        [filter:keystoneauth]
-        use = egg:swift#keystoneauth
+        [filter:swiftpolicy]
+        use = egg:swift#swiftpolicy
         operator_roles = admin, swiftoperator
 
     This maps tenants to account in Swift.
@@ -66,7 +66,7 @@ class KeystoneAuth(object):
 
     If you need to have a different reseller_prefix to be able to
     mix different auth servers you can configure the option
-    ``reseller_prefix`` in your keystoneauth entry like this::
+    ``reseller_prefix`` in your swiftpolicy entry like this::
 
         reseller_prefix = NEWAUTH
 
@@ -76,7 +76,7 @@ class KeystoneAuth(object):
     def __init__(self, app, conf):
         self.app = app
         self.conf = conf
-        self.logger = swift_utils.get_logger(conf, log_route='keystoneauth')
+        self.logger = swift_utils.get_logger(conf, log_route='swiftpolicy')
         self.reseller_prefix = conf.get('reseller_prefix', 'AUTH_').strip()
         if self.reseller_prefix and self.reseller_prefix[-1] != '_':
             self.reseller_prefix += '_'
@@ -264,8 +264,8 @@ def filter_factory(global_conf, **local_conf):
     """Returns a WSGI filter app for use with paste.deploy."""
     conf = global_conf.copy()
     conf.update(local_conf)
-    register_swift_info('keystoneauth')
+    register_swift_info('swiftpolicy')
 
     def auth_filter(app):
-        return KeystoneAuth(app, conf)
+        return SwiftPolicy(app, conf)
     return auth_filter

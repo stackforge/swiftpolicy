@@ -16,7 +16,6 @@ from policy import register
 from policy import Enforcer
 from policy import Check
 from policy import Rules
-from string import Template
 
 
 def get_enforcer(operators_roles, reseller_role, is_admin, logger, policy_file=None):
@@ -76,6 +75,7 @@ class FileBasedEnforcer(Enforcer):
         policy = self._get_policy()
         try:
             rules = Rules.load_json(policy, self.default_rule)
+        #TODO error is not used
         except ValueError as error:
             raise
         self.set_rules(rules)
