@@ -18,23 +18,25 @@
 
     "remove_only": "role:remove_only",
     "upload_disabled": "role:upload_disabled",
+    "support": "role:support",
 
     "get_account": "rule:allowed_for_user and not rule:remove_only",
     "post_account": "rule:allowed_for_user and not rule:remove_only",
-    "head_account": "rule:allowed_for_user",
+    "head_account": "rule:allowed_for_user or rule:support",
     "delete_account": "rule:swift_reseller",
     "options_account": "",
     "get_container": "rule:allowed_for_user and not rule:remove_only",
     "put_container": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "delete_container": "rule:allowed_for_user",
     "post_container": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
-    "head_container": "rule:allowed_for_user",
+    "head_container": "rule:allowed_for_user or rule:support",
     "options_container": "",
     "get_object": "rule:allowed_for_user and not rule:remove_only",
     "put_object": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "copy_object": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "delete_object": "rule:allowed_for_user",
-    "head_object": "rule:allowed_for_user",
+    "head_object": "rule:allowed_for_user or rule:support",
     "post_object": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "options_object": ""
-}   
+}
+
