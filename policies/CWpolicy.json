@@ -1,8 +1,8 @@
 {
     "is_anonymous": "identity:None",
     "is_authenticated": "not rule:is_anonymous",
-    "swift_reseller": "(role:%(reseller_admin)s)",
-    "swift_operator": "%(operators)s",
+    "swift_reseller": "role:ResellerAdmin",
+    "swift_operator": "role:swiftoperator or role:admin",
 
     "swift_owner": "rule:swift_reseller or rule:swift_operator or is_admin:True",
 
@@ -16,22 +16,25 @@
 
     "allowed_for_user": "(rule:is_authenticated and rule:allowed_for_authenticated) or rule:allowed_for_anonymous",
 
-    "get_account": "rule:allowed_for_user and not role:remove_only",
-    "post_account": "rule:allowed_for_user and not role:remove_only",
+    "remove_only": "role:remove_only",
+    "upload_disabled": "role:upload_disabled",
+
+    "get_account": "rule:allowed_for_user and not rule:remove_only",
+    "post_account": "rule:allowed_for_user and not rule:remove_only",
     "head_account": "rule:allowed_for_user",
     "delete_account": "rule:swift_reseller",
     "options_account": "",
-    "get_container": "rule:allowed_for_user and not role:remove_only",
-    "put_container": "rule:allowed_for_user and not role:remove_only and not role:upload_disabled",
+    "get_container": "rule:allowed_for_user and not rule:remove_only",
+    "put_container": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "delete_container": "rule:allowed_for_user",
-    "post_container": "rule:allowed_for_user and not role:remove_only and not role:upload_disabled",
+    "post_container": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "head_container": "rule:allowed_for_user",
     "options_container": "",
-    "get_object": "rule:allowed_for_user and not role:remove_only",
-    "put_object": "rule:allowed_for_user and not role:remove_only and not role:upload_disabled",
-    "copy_object": "rule:allowed_for_user and not role:remove_only and not role:upload_disabled",
+    "get_object": "rule:allowed_for_user and not rule:remove_only",
+    "put_object": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
+    "copy_object": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "delete_object": "rule:allowed_for_user",
     "head_object": "rule:allowed_for_user",
-    "post_object": "rule:allowed_for_user and not role:remove_only and not role:upload_disabled",
+    "post_object": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "options_object": ""
 }   
