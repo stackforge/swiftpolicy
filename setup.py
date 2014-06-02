@@ -24,7 +24,7 @@ setup(name='swiftpolicy',
       author='CloudWatt',
       author_email='nassim.babaci@cloudwatt.com',
       url='https://git.corp.cloudwatt.com/nassim.babaci/swiftpolicy',
-      packages=['swiftpolicy'],
+      packages=['swiftpolicy', 'swiftpolicy.openstack', 'swiftpolicy.openstack.common'],
       requires=['swift(>=1.7)'],
       test_suite='tests',
       entry_points={'paste.filter_factory':
