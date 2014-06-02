@@ -54,8 +54,9 @@ class SwiftPolicy(object):
     And add a swift authorization filter section, such as::
 
         [filter:swiftpolicy]
-        use = egg:swift#swiftpolicy
+        use = egg:swiftpolicy#swiftpolicy
         operator_roles = admin, swiftoperator
+        policy = /path/to/policy.json
 
     This maps tenants to account in Swift.
 
