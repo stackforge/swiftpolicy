@@ -19,19 +19,82 @@ def get_enforcer(operators_roles, reseller_role, is_admin, logger, policy_file=N
                        for role in operators_roles.split(',')]
     parser.registry.register('logger', logger)
     if policy_file:
-        return FileBasedEnforcer(policy_file, logger=logger)
+        return FileBasedEnforcer(policy_file, logger)
     else:
-        return DefaultEnforcer(swift_operators, reseller_role, is_admin, logger=logger)
+        return DefaultEnforcer(swift_operators, reseller_role, is_admin, logger)
+
+class Enforcer(object):
+    def __init__(self, rules=None):
+        self.rules = rules
+
+    def enforce(self, rule, target, creds, do_raise=False,
+                exc=None, *args, **kwargs):
+        """Checks authorization of a rule against the target and credentials.
+
+        :param rule: A string or BaseCheck instance specifying the rule
+                    to evaluate.
+        :param target: As much information about the object being operated
+                    on as possible, as a dictionary.
+        :param creds: As much information about the user performing the
+                    action as possible, as a dictionary.
+        :param do_raise: Whether to raise an exception or not if check
+                        fails.
+        :param exc: Class of the exception to raise if the check fails.
+                    Any remaining arguments passed to check() (both
+                    positional and keyword arguments) will be passed to
+                    the exception class. If not specified, PolicyNotAuthorized
+                    will be used.
+
+        :return: Returns False if the policy does not allow the action and
+                exc is not provided; otherwise, returns a value that
+                evaluates to True.  Note: for rules using the "case"
+                expression, this True value will be the specified string
+                from the expression.
+        """
+
+        # NOTE(flaper87): Not logging target or creds to avoid
+        # potential security issues.
+
+        self.load_rules()
+
+        # Allow the rule to be a Check tree
+        if isinstance(rule, parser.BaseCheck):
+            result = rule(target, creds, self)
+        elif not self.rules:
+            # No rules to reference means we're going to fail closed
+            result = False
+        else:
+            try:
+                # Evaluate the rule
+                result = self.rules[rule](target, creds, self)
+            except KeyError:
+                # If the rule doesn't exist, fail closed
+                result = False
+
+        # If it is False, raise the exception if requested
+        if do_raise and not result:
+            if exc:
+                raise exc(*args, **kwargs)
+
+            raise parser.PolicyNotAuthorized(rule)
+
+        return result
+
+    def load_rules(self, force_reload=False):
+        #import pdb; pdb.set_trace()
+        policy = self._get_policy()
+        rules = parser.Rules.load_json(policy)
+        self.rules = rules
 
 
-class DefaultEnforcer(object):
-    def __init__(self, swift_operator, swift_reseller, is_admin=False):
-        super(DefaultEnforcer, self).__init__(policy_file=None, rules=None,
-                                              default_rule=None)
+class DefaultEnforcer(Enforcer):
+    def __init__(self, swift_operator, swift_reseller, is_admin=False, logger=None):
+        super(DefaultEnforcer, self).__init__()
 
         self.swift_operator = swift_operator
         self.swift_reseller = swift_reseller
         self.is_admin = is_admin
+        self.log = logger
 
     def _get_policy(self):
         param = {
@@ -47,34 +110,18 @@ class DefaultEnforcer(object):
         policy = template % param
         return policy
 
-    def load_rules(self, force_reload=False):
-        #import pdb; pdb.set_trace()
-        policy = self._get_policy()
-        rules = parser.Rules.load_json(policy, self.default_rule)
-        self.set_rules(rules)
 
-class FileBasedEnforcer(object):
-    def __init__(self, policy_file):
-        super(FileBasedEnforcer, self).__init__(policy_file=None, rules=None,
-                                              default_rule=None)
+class FileBasedEnforcer(Enforcer):
+    def __init__(self, policy_file, logger):
+        super(FileBasedEnforcer, self).__init__()
         self.policy_file = policy_file
+        self.log = logger
 
     def _get_policy(self):
         with open(self.policy_file, 'r') as policies:
             policy = policies.read()
 
         return policy
-
-    def load_rules(self, force_reload=False):
-        #import pdb; pdb.set_trace()
-        policy = self._get_policy()
-        try:
-            rules = parser.Rules.load_json(policy, self.default_rule)
-        #TODO error is not used
-        except ValueError as error:
-            raise
-        self.set_rules(rules)
-
 
 @parser.register("acl")
 class AclCheck(parser.Check):
