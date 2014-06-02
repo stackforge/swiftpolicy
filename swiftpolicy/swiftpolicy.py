@@ -21,7 +21,8 @@ from enforcer import get_enforcer
 
 
 class SwiftPolicy(object):
-    """Swift middleware to Keystone authorization system.
+    """Swift middleware to handle Keystone authorization based
+    openstack policy.json format
 
     In Swift's proxy-server.conf add this middleware to your pipeline::
 

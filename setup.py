@@ -26,5 +26,6 @@ setup(name='swiftpolicy',
       url='https://git.corp.cloudwatt.com/nassim.babaci/swiftpolicy',
       packages=['swiftpolicy'],
       requires=['swift(>=1.7)'],
+      test_suite='tests',
       entry_points={'paste.filter_factory':
                     ['swiftpolicy=swiftpolicy.swiftpolicy:filter_factory']})

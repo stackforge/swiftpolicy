@@ -12,30 +12,26 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from policy import register
-from policy import Enforcer
-from policy import Check
-from policy import Rules
-
+from openstack.common import policy_parser as parser
 
 def get_enforcer(operators_roles, reseller_role, is_admin, logger, policy_file=None):
     swift_operators = [role.strip()
                        for role in operators_roles.split(',')]
+    parser.registry.register('logger', logger)
     if policy_file:
         return FileBasedEnforcer(policy_file, logger=logger)
     else:
         return DefaultEnforcer(swift_operators, reseller_role, is_admin, logger=logger)
 
 
-class DefaultEnforcer(Enforcer):
-    def __init__(self, swift_operator, swift_reseller, is_admin=False, logger=None):
+class DefaultEnforcer(object):
+    def __init__(self, swift_operator, swift_reseller, is_admin=False):
         super(DefaultEnforcer, self).__init__(policy_file=None, rules=None,
                                               default_rule=None)
 
         self.swift_operator = swift_operator
         self.swift_reseller = swift_reseller
         self.is_admin = is_admin
-        self.log = logger
 
     def _get_policy(self):
         param = {
@@ -54,15 +50,14 @@ class DefaultEnforcer(Enforcer):
     def load_rules(self, force_reload=False):
         #import pdb; pdb.set_trace()
         policy = self._get_policy()
-        rules = Rules.load_json(policy, self.default_rule)
+        rules = parser.Rules.load_json(policy, self.default_rule)
         self.set_rules(rules)
 
-class FileBasedEnforcer(Enforcer):
-    def __init__(self, policy_file, logger):
+class FileBasedEnforcer(object):
+    def __init__(self, policy_file):
         super(FileBasedEnforcer, self).__init__(policy_file=None, rules=None,
                                               default_rule=None)
         self.policy_file = policy_file
-        self.log = logger
 
     def _get_policy(self):
         with open(self.policy_file, 'r') as policies:
@@ -74,15 +69,15 @@ class FileBasedEnforcer(Enforcer):
         #import pdb; pdb.set_trace()
         policy = self._get_policy()
         try:
-            rules = Rules.load_json(policy, self.default_rule)
+            rules = parser.Rules.load_json(policy, self.default_rule)
         #TODO error is not used
         except ValueError as error:
             raise
         self.set_rules(rules)
 
 
-@register("acl")
-class AclCheck(Check):
+@parser.register("acl")
+class AclCheck(parser.Check):
     @staticmethod
     def _authorize_cross_tenant(user_id, user_name,
                                 tenant_id, tenant_name, acls):

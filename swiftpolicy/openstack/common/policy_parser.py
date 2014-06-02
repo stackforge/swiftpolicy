@@ -1,5 +1,4 @@
 # Copyright (c) 2012 OpenStack Foundation.
-#
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,11 +15,6 @@
 
 """
 Common Policy Engine Implementation
-
-Based on:
-   https://github.com/openstack/oslo-incubator/blob/master
-   /openstack/common/policy.py
-   and adapted to remove dependency to oslo.cfg.
 
 Policies can be expressed in one of two forms: A list of lists, or a
 string written in the new policy language.
@@ -83,17 +77,36 @@ as it allows particular rules to be explicitly disabled.
 
 import abc
 import ast
+import gettext
+import json
+import logging
 import re
-
 import six
 import six.moves.urllib.parse as urlparse
 import six.moves.urllib.request as urlrequest
 
-from swift import gettext_ as _
-import json
 
+class Registry(object):
+    components = {
+        "rule_formatter": json,
+        "trans": gettext.gettext,
+        "trans_error": gettext.gettext,
+        "logger": logging.getLogger(__name__)
+    }
 
-_checks = {}
+    def register(self, name, obj):
+        if name in self.components:
+            self.components[name] = obj
+
+    def get(self, name):
+        return self.components.get(name, None)
+
+registry = Registry()
+
+# set global components.
+rule_formatter = registry.get('rule_formatter')
+_, _LE = registry.get('trans'), registry.get('trans_error')
+log = registry.get('logger')
 
 
 class PolicyNotAuthorized(Exception):
@@ -112,7 +125,7 @@ class Rules(dict):
 
         # Suck in the JSON data and parse the rules
         rules = dict((k, parse_rule(v)) for k, v in
-                     json.loads(data).items())
+                     rule_formatter.loads(data).items())
 
         return cls(rules, default_rule)
 
@@ -156,116 +169,7 @@ class Rules(dict):
                 out_rules[key] = str(value)
 
         # Dump a pretty-printed JSON representation
-        return json.dumps(out_rules, indent=4)
-
-
-class Enforcer(object):
-    """Responsible for loading and enforcing rules.
-
-    :param policy_file: Custom policy file to use, if none is
-                        specified, `CONF.policy_file` will be
-                        used.
-    :param rules: Default dictionary / Rules to use. It will be
-                  considered just in the first instantiation. If
-                  `load_rules(True)`, `clear()` or `set_rules(True)`
-                  is called this will be overwritten.
-    :param default_rule: Default rule to use, CONF.default_rule will
-                         be used if none is specified.
-    """
-
-    def __init__(self, policy_file=None, rules=None,
-                 default_rule=None):
-        self.rules = Rules(rules, default_rule)
-        self.default_rule = default_rule
-
-        self.policy_path = None
-        self.policy_file = policy_file
-
-    def set_rules(self, rules, overwrite=True):
-        """Create a new Rules object based on the provided dict of rules.
-
-        :param rules: New rules to use. It should be an instance of dict.
-        :param overwrite: Whether to overwrite current rules or update them
-                          with the new rules.
-        :param use_conf: Whether to reload rules from cache or config file.
-        """
-
-        if not isinstance(rules, dict):
-            raise TypeError(_("Rules must be an instance of dict or Rules, "
-                            "got %s instead") % type(rules))
-        if overwrite:
-            self.rules = Rules(rules, self.default_rule)
-        else:
-            self.rules.update(rules)
-
-    def clear(self):
-        """Clears Enforcer rules, policy's cache and policy's path."""
-        self.set_rules({})
-        self.default_rule = None
-        self.policy_path = None
-
-    def load_rules(self, force_reload=False):
-        """Loads policy_path's rules. """
-        raise NotImplemented
-
-    def _get_policy_path(self):
-        """Locate the policy json data file."""
-        raise NotImplemented
-
-    def enforce(self, rule, target, creds, do_raise=False,
-                exc=None, *args, **kwargs):
-        """Checks authorization of a rule against the target and credentials.
-
-        :param rule: A string or BaseCheck instance specifying the rule
-                    to evaluate.
-        :param target: As much information about the object being operated
-                    on as possible, as a dictionary.
-        :param creds: As much information about the user performing the
-                    action as possible, as a dictionary.
-        :param do_raise: Whether to raise an exception or not if check
-                        fails.
-        :param exc: Class of the exception to raise if the check fails.
-                    Any remaining arguments passed to check() (both
-                    positional and keyword arguments) will be passed to
-                    the exception class. If not specified, PolicyNotAuthorized
-                    will be used.
-
-        :return: Returns False if the policy does not allow the action and
-                exc is not provided; otherwise, returns a value that
-                evaluates to True.  Note: for rules using the "case"
-                expression, this True value will be the specified string
-                from the expression.
-        """
-
-        # NOTE(flaper87): Not logging target or creds to avoid
-        # potential security issues.
-        #LOG.debug("Rule %s will be now enforced" % rule)
-
-        self.load_rules()
-
-        # Allow the rule to be a Check tree
-        if isinstance(rule, BaseCheck):
-            result = rule(target, creds, self)
-        elif not self.rules:
-            # No rules to reference means we're going to fail closed
-            result = False
-        else:
-            try:
-                # Evaluate the rule
-                result = self.rules[rule](target, creds, self)
-            except KeyError:
-                #LOG.debug("Rule [%s] doesn't exist" % rule)
-                # If the rule doesn't exist, fail closed
-                result = False
-
-        # If it is False, raise the exception if requested
-        if do_raise and not result:
-            if exc:
-                raise exc(*args, **kwargs)
-
-            raise PolicyNotAuthorized(rule)
-
-        return result
+        return rule_formatter.dumps(out_rules, indent=4)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -449,6 +353,8 @@ class OrCheck(BaseCheck):
         self.rules.append(rule)
         return self
 
+_checks = {}
+
 
 def _parse_check(rule):
     """Parse a single base check rule into an appropriate Check object."""
@@ -462,7 +368,7 @@ def _parse_check(rule):
     try:
         kind, match = rule.split(':', 1)
     except Exception:
-        #LOG.exception(_LE("Failed to understand rule %s") % rule)
+        log.exception(_LE("Failed to understand rule %s") % rule)
         # If the rule is invalid, we'll fail closed
         return FalseCheck()
 
@@ -472,7 +378,7 @@ def _parse_check(rule):
     elif None in _checks:
         return _checks[None](kind, match)
     else:
-        #LOG.error(_LE("No handler for matches of kind %s") % kind)
+        log.error(_LE("No handler for matches of kind %s") % kind)
         return FalseCheck()
 
 
@@ -742,7 +648,7 @@ def _parse_text_rule(rule):
         return state.result
     except ValueError:
         # Couldn't parse the rule
-        #LOG.exception(_LE("Failed to understand rule %r") % rule)
+        log.exception(_LE("Failed to understand rule %r") % rule)
 
         # Fail closed
         return FalseCheck()
@@ -789,9 +695,7 @@ class RuleCheck(Check):
         """Recursively checks credentials based on the defined rules."""
 
         try:
-            result = enforcer.rules[self.match](target, creds, enforcer)
-            enforcer.log.debug("Rule '%s' evaluated to %s" % (self.match, result))
-            return result
+            return enforcer.rules[self.match](target, creds, enforcer)
         except KeyError:
             # We don't have any matching rule; fail closed
             return False
@@ -815,8 +719,8 @@ class HttpCheck(Check):
         """
 
         url = ('http:' + self.match) % target
-        data = {'target': json.dumps(target),
-                'credentials': json.dumps(creds)}
+        data = {'target': rule_formatter.dumps(target),
+                'credentials': rule_formatter.dumps(creds)}
         post_data = urlparse.urlencode(data)
         f = urlrequest.urlopen(url, post_data)
         return f.read() == "True"
