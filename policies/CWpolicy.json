@@ -2,7 +2,7 @@
     "is_anonymous": "identity:None",
     "is_authenticated": "not rule:is_anonymous",
     "swift_reseller": "role:ResellerAdmin",
-    "swift_operator": "role:swiftoperator or role:admin",
+    "swift_operator": "role:swiftoperator or role:admin or role:Member",
 
     "swift_owner": "rule:swift_reseller or rule:swift_operator or is_admin:True",
 
@@ -20,12 +20,12 @@
     "upload_disabled": "role:upload_disabled",
     "support": "role:support",
 
-    "get_account": "rule:allowed_for_user and not rule:remove_only",
+    "get_account": "rule:allowed_for_user or rule:support",
     "post_account": "rule:allowed_for_user and not rule:remove_only",
     "head_account": "rule:allowed_for_user or rule:support",
     "delete_account": "rule:swift_reseller",
     "options_account": "",
-    "get_container": "rule:allowed_for_user and not rule:remove_only",
+    "get_container": "rule:allowed_for_user or rule:support",
     "put_container": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
     "delete_container": "rule:allowed_for_user",
     "post_container": "rule:allowed_for_user and not rule:remove_only and not rule:upload_disabled",
