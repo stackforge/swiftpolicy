@@ -4,10 +4,11 @@ CLEANUP=${CLEANUP-true}
 # assuming a devstack with the following parameters, where swiftpolicy mw
 # was added to the swift pipeline and using CWpolicy.json
 
+BASE_URL=http://localhost
 OS_ADMIN=admin
 OS_ADMIN_PASSWORD=admin
 OS_ADMIN_TENANT=admin
-OS_AUTH_URL=http://localhost:5000/v2.0
+OS_AUTH_URL=$BASE_URL:5000/v2.0
 
 # CW related variables
 CW_ROLE1=upload_disabled
@@ -22,6 +23,11 @@ setup () {
     OS_TENANT_NAME=$OS_ADMIN_TENANT \
     OS_PASSWORD=$OS_ADMIN_PASSWORD \
     OS_AUTH_URL=$OS_AUTH_URL keystone tenant-create --name $CW_USER 2>&1 >/dev/null
+
+    CW_TID=$(OS_USERNAME=$OS_ADMIN \
+        OS_TENANT_NAME=$OS_ADMIN_TENANT \
+        OS_PASSWORD=$OS_ADMIN_PASSWORD \
+        OS_AUTH_URL=$OS_AUTH_URL keystone tenant-get $CW_USER |awk '{if ($2 == "id") {print $4}}')
 
     OS_USERNAME=$OS_ADMIN \
     OS_TENANT_NAME=$OS_ADMIN_TENANT \
@@ -59,6 +65,7 @@ setup () {
     OS_TENANT_NAME=$OS_ADMIN_TENANT \
     OS_PASSWORD=$OS_ADMIN_PASSWORD \
     OS_AUTH_URL=$OS_AUTH_URL keystone user-role-add --user $CW_USER --tenant $CW_USER --role Member 2>&1 >/dev/null
+    
 }
 
 tests () {
@@ -109,6 +116,18 @@ tests () {
     OS_TENANT_NAME=$CW_USER \
     OS_PASSWORD=$CW_USER \
     OS_AUTH_URL=$OS_AUTH_URL swift download container1 2>&1 >/dev/null
+    
+    echo ">> Testing sharing temp URLs"
+    # Create the tempurl key
+    OS_USERNAME=$CW_USER \
+    OS_TENANT_NAME=$CW_USER \
+    OS_PASSWORD=$CW_USER \
+    OS_AUTH_URL=$OS_AUTH_URL swift post -m Temp-URL-Key:test1 2>&1 >/dev/null    
+    # get the url
+    TEMP_URL=$(swift-temp-url GET 6000 /v1/AUTH_$CW_TID/container1/obj1 test1)
+    # Download the file
+    wget $BASE_URL:8080$TEMP_URL
+
 
     echo ""
     echo "*** Now prevent uploads ***"
@@ -155,6 +174,17 @@ tests () {
     OS_TENANT_NAME=$CW_USER \
     OS_PASSWORD=$CW_USER \
     OS_AUTH_URL=$OS_AUTH_URL swift download container1 2>&1 >/dev/null
+    echo ">> Testing sharing temp URLs"
+    # Create the tempurl key
+    OS_USERNAME=$CW_USER \
+    OS_TENANT_NAME=$CW_USER \
+    OS_PASSWORD=$CW_USER \
+    OS_AUTH_URL=$OS_AUTH_URL swift post -m Temp-URL-Key:test2 2>&1 >/dev/null    
+    # get the url
+    TEMP_URL=$(swift-temp-url GET 6000 /v1/AUTH_$CW_TID/container1/obj1 test2)
+    # Download the file
+    wget $BASE_URL:8080$TEMP_URL
+
 
     echo ""
     echo "*** Now authorize file removal only ***"
@@ -215,6 +245,27 @@ tests () {
         echo "... Download forbidden, all good"
     else
         echo "... FAIL - User can download data"
+    fi;
+    echo ">> Testing sharing temp URLs"
+    # get the url
+    TEMP_URL=$(swift-temp-url GET 6000 /v1/AUTH_$CW_TID/container1/obj1 test2)
+    # Download the file, shouldn't work
+    wget $BASE_URL:8080$TEMP_URL 2>&1 >/dev/null
+    if [ $? -ne 0 ]; then
+        echo "... Share Download forbidden, all good"
+    else
+        echo "... FAIL - User can share data"
+    fi;    
+    sleep 20
+    # Create the tempurl key, shouldn't even work either
+    OS_USERNAME=$CW_USER \
+    OS_TENANT_NAME=$CW_USER \
+    OS_PASSWORD=$CW_USER \
+    OS_AUTH_URL=$OS_AUTH_URL swift post -m Temp-URL-Key:test3 2>&1
+    if [ $? -ne 0 ]; then
+        echo "... Cannot change metadata, all good"
+    else
+        echo "... FAIL - User can change temp url key"
     fi;
 
 
