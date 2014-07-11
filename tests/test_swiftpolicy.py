@@ -18,7 +18,7 @@ import time
 import unittest
 from collections import defaultdict
 
-from swift.common.middleware import keystoneauth
+from swiftpolicy import swiftpolicy
 from swift.common.swob import Request, Response
 from swift.common.http import HTTP_FORBIDDEN
 from swiftpolicy.enforcer import AclCheck
@@ -165,7 +165,9 @@ class FakeApp(object):
 
 class SwiftAuth(unittest.TestCase):
     def setUp(self):
-        self.test_auth = keystoneauth.filter_factory({})(FakeApp())
+        self.test_auth = swiftpolicy.filter_factory({'policy': 'policies/default.json'})(FakeApp())
+        # set in default.json
+        self.reseller_admin_role = "reseller"
         self.test_auth.logger = FakeLogger()
 
     def _make_request(self, path=None, headers=None, **kwargs):
@@ -183,10 +185,10 @@ class SwiftAuth(unittest.TestCase):
 
     def _get_successful_middleware(self):
         response_iter = iter([('200 OK', {}, '')])
-        return keystoneauth.filter_factory({})(FakeApp(response_iter))
+        return swiftpolicy.filter_factory({'policy': 'policies/default.json'})(FakeApp(response_iter))
 
     def test_invalid_request_authorized(self):
-        role = self.test_auth.reseller_admin_role
+        role = self.reseller_admin_role
         headers = self._get_identity_headers(role=role)
         req = self._make_request('/', headers=headers)
         resp = req.get_response(self._get_successful_middleware())
@@ -198,14 +200,14 @@ class SwiftAuth(unittest.TestCase):
         self.assertEqual(resp.status_int, 404)
 
     def test_confirmed_identity_is_authorized(self):
-        role = self.test_auth.reseller_admin_role
+        role = self.reseller_admin_role
         headers = self._get_identity_headers(role=role)
         req = self._make_request('/v1/AUTH_acct/c', headers)
         resp = req.get_response(self._get_successful_middleware())
         self.assertEqual(resp.status_int, 200)
 
     def test_detect_reseller_request(self):
-        role = self.test_auth.reseller_admin_role
+        role = self.reseller_admin_role
         headers = self._get_identity_headers(role=role)
         req = self._make_request('/v1/AUTH_acct/c', headers)
         req.get_response(self._get_successful_middleware())
@@ -239,23 +241,23 @@ class SwiftAuth(unittest.TestCase):
 
     def test_blank_reseller_prefix(self):
         conf = {'reseller_prefix': ''}
-        test_auth = keystoneauth.filter_factory(conf)(FakeApp())
+        test_auth = swiftpolicy.filter_factory(conf)(FakeApp())
         account = tenant_id = 'foo'
         self.assertEqual(account, test_auth._get_account_for_tenant(tenant_id))
 
     def test_reseller_prefix_added_underscore(self):
         conf = {'reseller_prefix': 'AUTH'}
-        test_auth = keystoneauth.filter_factory(conf)(FakeApp())
+        test_auth = swiftpolicy.filter_factory(conf)(FakeApp())
         self.assertEqual(test_auth.reseller_prefix, "AUTH_")
 
     def test_reseller_prefix_not_added_double_underscores(self):
         conf = {'reseller_prefix': 'AUTH_'}
-        test_auth = keystoneauth.filter_factory(conf)(FakeApp())
+        test_auth = swiftpolicy.filter_factory(conf)(FakeApp())
         self.assertEqual(test_auth.reseller_prefix, "AUTH_")
 
     def test_override_asked_for_but_not_allowed(self):
-        conf = {'allow_overrides': 'false'}
-        self.test_auth = keystoneauth.filter_factory(conf)(FakeApp())
+        conf = {'allow_overrides': 'false', 'policy': 'policies/default.json'}
+        self.test_auth = swiftpolicy.filter_factory(conf)(FakeApp())
         req = self._make_request('/v1/AUTH_account',
                                  environ={'swift.authorize_override': True})
         resp = req.get_response(self.test_auth)
@@ -263,7 +265,7 @@ class SwiftAuth(unittest.TestCase):
 
     def test_override_asked_for_and_allowed(self):
         conf = {'allow_overrides': 'true'}
-        self.test_auth = keystoneauth.filter_factory(conf)(FakeApp())
+        self.test_auth = swiftpolicy.filter_factory(conf)(FakeApp())
         req = self._make_request('/v1/AUTH_account',
                                  environ={'swift.authorize_override': True})
         resp = req.get_response(self.test_auth)
@@ -300,7 +302,10 @@ class SwiftAuth(unittest.TestCase):
 
 class TestAuthorize(unittest.TestCase):
     def setUp(self):
-        self.test_auth = keystoneauth.filter_factory({})(FakeApp())
+        self.test_auth = swiftpolicy.filter_factory({'policy': 'policies/default.json'})(FakeApp())
+        # set in default.json
+        self.reseller_admin_role = "reseller"
+        self.operator_roles = ["admin", "swiftoperator",]
         self.test_auth.logger = FakeLogger()
 
     def _make_request(self, path, **kwargs):
@@ -356,45 +361,28 @@ class TestAuthorize(unittest.TestCase):
                                  exception=HTTP_FORBIDDEN)
 
     def test_authorize_succeeds_for_reseller_admin(self):
-        roles = [self.test_auth.reseller_admin_role]
+        roles = [self.reseller_admin_role]
         identity = self._get_identity(roles=roles)
         req = self._check_authenticate(identity=identity)
         self.assertTrue(req.environ.get('swift_owner'))
 
     def test_authorize_succeeds_for_insensitive_reseller_admin(self):
-        roles = [self.test_auth.reseller_admin_role.upper()]
+        roles = [self.reseller_admin_role.upper()]
         identity = self._get_identity(roles=roles)
         req = self._check_authenticate(identity=identity)
         self.assertTrue(req.environ.get('swift_owner'))
 
     def test_authorize_succeeds_as_owner_for_operator_role(self):
-        roles = self.test_auth.operator_roles.split(',')
+        roles = self.operator_roles
         identity = self._get_identity(roles=roles)
         req = self._check_authenticate(identity=identity)
         self.assertTrue(req.environ.get('swift_owner'))
 
     def test_authorize_succeeds_as_owner_for_insensitive_operator_role(self):
-        #import pdb; pdb.set_trace()
-        roles = [r.upper() for r in self.test_auth.operator_roles.split(',')]
+        roles = [r.upper() for r in self.operator_roles]
         identity = self._get_identity(roles=roles)
         req = self._check_authenticate(identity=identity)
         self.assertTrue(req.environ.get('swift_owner'))
-
-    def _check_authorize_for_tenant_owner_match(self, exception=None):
-        identity = self._get_identity(user_name='same_name',
-                                      tenant_name='same_name')
-        req = self._check_authenticate(identity=identity, exception=exception)
-        expected = bool(exception is None)
-        self.assertEqual(bool(req.environ.get('swift_owner')), expected)
-
-    def test_authorize_succeeds_as_owner_for_tenant_owner_match(self):
-        self.test_auth.is_admin = True
-        self._check_authorize_for_tenant_owner_match()
-
-    def test_authorize_fails_as_owner_for_tenant_owner_match(self):
-        self.test_auth.is_admin = False
-        self._check_authorize_for_tenant_owner_match(
-            exception=HTTP_FORBIDDEN)
 
     def test_authorize_succeeds_for_container_sync(self):
         env = {'swift_sync_key': 'foo', 'REMOTE_ADDR': '127.0.0.1'}
@@ -452,7 +440,7 @@ class TestAuthorize(unittest.TestCase):
             self._check_authenticate(identity=identity, acl=acl)
 
     def test_delete_own_account_not_allowed(self):
-        roles = self.test_auth.operator_roles.split(',')
+        roles = self.operator_roles
         identity = self._get_identity(roles=roles)
         account = self._get_account(identity)
         self._check_authenticate(account=account,
@@ -462,7 +450,7 @@ class TestAuthorize(unittest.TestCase):
                                  env={'REQUEST_METHOD': 'DELETE'})
 
     def test_delete_own_account_when_reseller_allowed(self):
-        roles = [self.test_auth.reseller_admin_role]
+        roles = [self.reseller_admin_role]
         identity = self._get_identity(roles=roles)
         account = self._get_account(identity)
         req = self._check_authenticate(account=account,

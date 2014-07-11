@@ -14,14 +14,11 @@
 
 from openstack.common import policy_parser as parser
 
-def get_enforcer(operators_roles, reseller_role, is_admin, logger, policy_file=None):
-    swift_operators = [role.strip()
-                       for role in operators_roles.split(',')]
+def get_enforcer(logger, policy_file):
     parser.registry.register('logger', logger)
     if policy_file:
         return FileBasedEnforcer(policy_file, logger)
-    else:
-        return DefaultEnforcer(swift_operators, reseller_role, is_admin, logger)
+
 
 class Enforcer(object):
     def __init__(self, rules=None):
@@ -81,34 +78,9 @@ class Enforcer(object):
         return result
 
     def load_rules(self, force_reload=False):
-        #import pdb; pdb.set_trace()
         policy = self._get_policy()
         rules = parser.Rules.load_json(policy)
         self.rules = rules
-
-
-class DefaultEnforcer(Enforcer):
-    def __init__(self, swift_operator, swift_reseller, is_admin=False, logger=None):
-        super(DefaultEnforcer, self).__init__()
-
-        self.swift_operator = swift_operator
-        self.swift_reseller = swift_reseller
-        self.is_admin = is_admin
-        self.log = logger
-
-    def _get_policy(self):
-        param = {
-            "reseller_admin": self.swift_reseller,
-            "operators": " or ".join(["role:%s" % role
-                                      for role in self.swift_operator])
-        }
-        if self.is_admin:
-            template = default_policy_is_admin_tmpl
-        else:
-            template = default_policy_tmpl
-
-        policy = template % param
-        return policy
 
 
 class FileBasedEnforcer(Enforcer):
@@ -219,103 +191,3 @@ class AclCheck(parser.Check):
 
         enforcer.log.debug("Rule '%s' evaluated to %s" % (self.match, res))
         return res
-
-
-default_policy_tmpl = (
-    '{'
-    '"is_anonymous": "identity:None",'
-    '"is_authenticated": "not rule:is_anonymous",'
-    '"swift_reseller": "(role:%(reseller_admin)s)",'
-    '"swift_operator": "%(operators)s",'
-
-    '"swift_owner": "rule:swift_reseller'
-    ' or rule:swift_operator",'
-
-    '"reseller_request": "rule:swift_reseller",'
-    '"same_tenant": "account:%%(account)s",'
-    '"tenant_mismatch": "not rule:same_tenant",'
-
-    '"allowed_for_authenticated": "rule:swift_reseller'
-    ' or acl:check_cross_tenant'
-    ' or acl:check_is_public'
-    ' or (rule:same_tenant and rule:swift_operator)'
-    ' or (rule:same_tenant and acl:check_roles)",'
-
-    '"allowed_for_anonymous": "is_authoritative:True'
-    ' and acl:check_is_public",'
-
-    '"allowed_for_user": "(rule:is_authenticated'
-    ' and rule:allowed_for_authenticated)'
-    ' or rule:allowed_for_anonymous",'
-
-    '"get_account": "rule:allowed_for_user",'
-    '"post_account": "rule:allowed_for_user",'
-    '"head_account": "rule:allowed_for_user",'
-    '"delete_account": "rule:swift_reseller",'
-    '"options_account": "",'
-    '"get_container": "rule:allowed_for_user",'
-    '"put_container": "rule:allowed_for_user",'
-    '"delete_container": "rule:allowed_for_user",'
-    '"post_container": "rule:allowed_for_user",'
-    '"head_container": "rule:allowed_for_user",'
-    '"options_container": "",'
-    '"get_object": "rule:allowed_for_user",'
-    '"put_object": "rule:allowed_for_user",'
-    '"copy_object": "rule:allowed_for_user",'
-    '"delete_object": "rule:allowed_for_user",'
-    '"head_object": "rule:allowed_for_user",'
-    '"post_object": "rule:allowed_for_user",'
-    '"options_object": ""'
-    '}'
-)
-
-default_policy_is_admin_tmpl = (
-    '{'
-    '"is_anonymous": "identity:None",'
-    '"is_authenticated": "not rule:is_anonymous",'
-    '"swift_reseller": "(role:%(reseller_admin)s)",'
-    '"swift_operator": "%(operators)s",'
-
-    '"swift_owner": "rule:swift_reseller'
-    ' or rule:swift_operator'
-    # diff: add is_admin to swift_owner
-    ' or is_admin:True",'
-
-    '"reseller_request": "rule:swift_reseller",'
-    '"same_tenant": "account:%%(account)s",'
-    '"tenant_mismatch": "not rule:same_tenant",'
-
-    '"allowed_for_authenticated": "rule:swift_reseller'
-    ' or acl:check_cross_tenant or acl:check_is_public'
-    ' or (rule:same_tenant and rule:swift_operator)'
-    # diff: allow access if user is_admin
-    ' or (rule:same_tenant and is_admin:True)'
-    ' or (rule:same_tenant and is_admin:False and acl:check_roles)",'
-
-    '"allowed_for_anonymous": "is_authoritative:True'
-    ' and acl:check_is_public",'
-
-    '"allowed_for_user": "(rule:is_authenticated'
-    ' and rule:allowed_for_authenticated)'
-    ' or rule:allowed_for_anonymous",'
-
-    '"get_account": "rule:allowed_for_user",'
-    '"post_account": "rule:allowed_for_user",'
-    '"head_account": "rule:allowed_for_user",'
-    '"delete_account": "rule:swift_reseller",'
-    '"options_account": "",'
-    '"get_container": "rule:allowed_for_user",'
-    '"put_container": "rule:allowed_for_user",'
-    '"delete_container": "rule:allowed_for_user",'
-    '"post_container": "rule:allowed_for_user",'
-    '"head_container": "rule:allowed_for_user",'
-    '"options_container": "",'
-    '"get_object": "rule:allowed_for_user",'
-    '"put_object": "rule:allowed_for_user",'
-    '"copy_object": "rule:allowed_for_user",'
-    '"delete_object": "rule:allowed_for_user",'
-    '"head_object": "rule:allowed_for_user",'
-    '"post_object": "rule:allowed_for_user",'
-    '"options_object": ""'
-    '}'
-)

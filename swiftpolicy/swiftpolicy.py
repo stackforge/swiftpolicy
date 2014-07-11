@@ -82,15 +82,15 @@ class SwiftPolicy(object):
         self.reseller_prefix = conf.get('reseller_prefix', 'AUTH_').strip()
         if self.reseller_prefix and self.reseller_prefix[-1] != '_':
             self.reseller_prefix += '_'
-        self.operator_roles = conf.get('operator_roles',
-                                       'admin, swiftoperator').lower()
-        self.reseller_admin_role = conf.get('reseller_admin_role',
-                                            'ResellerAdmin').lower()
-        config_is_admin = conf.get('is_admin', "false").lower()
-        self.is_admin = swift_utils.config_true_value(config_is_admin)
+        #self.operator_roles = conf.get('operator_roles',
+        #                               'admin, swiftoperator').lower()
+        #self.reseller_admin_role = conf.get('reseller_admin_role',
+        #                                    'ResellerAdmin').lower()
+        #config_is_admin = conf.get('is_admin', "false").lower()
+        #self.is_admin = swift_utils.config_true_value(config_is_admin)
         config_overrides = conf.get('allow_overrides', 't').lower()
         self.allow_overrides = swift_utils.config_true_value(config_overrides)
-        self.policy_file = conf.get('policy', None)
+        self.policy_file = conf.get('policy', "default.json")
 
     def __call__(self, environ, start_response):
         identity = self._keystone_identity(environ)
@@ -109,7 +109,7 @@ class SwiftPolicy(object):
             environ['keystone.identity'] = identity
             environ['REMOTE_USER'] = identity.get('tenant')
             environ['swift.authorize'] = self.authorize
-            # Check reseller_request again poicy
+            # Check reseller_request against policy
             if self.check_action('reseller_request', environ):
                 environ['reseller_request'] = True
         else:
@@ -227,11 +227,7 @@ class SwiftPolicy(object):
     def check_action(self, action, environ):
         creds = self.get_creds(environ)
         target = self.get_target(environ)
-        enforcer = get_enforcer(self.operator_roles,
-                                self.reseller_admin_role,
-                                self.is_admin,
-                                self.logger,
-                                self.policy_file)
+        enforcer = get_enforcer(self.logger, self.policy_file)
         self.logger.debug("enforce action '%s'", action)
         return enforcer.enforce(action, target, creds)
 
