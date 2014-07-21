@@ -7,9 +7,6 @@ format to handle swift authorizations.
 SwiftPolicy is an adaptation of the keystoneauth middleware here:
 https://github.com/openstack/swift/blob/master/swift/common/middleware/keystoneauth.py
 
-For compatibity reasons, with the shipped default.json file SwiftPolicy 
-will behave exactly like keystoneauth. (except we removed the deprecated 
-is_admin feature).
 
 Install
 -------
@@ -47,13 +44,14 @@ Policy file
 -----------
 
 The policy file will list all possible actions on swift proxy.
-Action's format is: "<http verbe>_<swift entity>" (example: "get_container", "put_object", etc).
+Action's format is: <http verbe>_<swift entity>" (example: "get_container", "put_object", etc).
 
     ...
     "get_container": "rule:allowed_for_user",
     "put_container": "rule:allowed_for_user",
     "delete_container": "rule:allowed_for_user",
     ...
+
 
 Policy file contains also two specific rules: "swift_owner" "reseller_request", they define
 when swift_owner and reseller_request headers are set to true, as those two value are part
@@ -64,7 +62,6 @@ of the contract between the auth system and swift.
     "reseller_request": "rule:swift_reseller",
     ...
  
-
 Example
 -------
 
@@ -85,6 +82,6 @@ Example
 Limitations
 -----------
 
-* swiftpolicy does not support dynamic laoding of the policy file, and thus, swift proxy have
+* swiftpolicy does not support dynamic reload of policies, and thus, swift proxy have
 to be restarted when policy file is updated.
 
