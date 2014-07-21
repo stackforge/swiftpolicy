@@ -20,12 +20,12 @@ import swiftpolicy
 
 setup(name='swiftpolicy',
       version=swiftpolicy.version,
-      description='Swift Policy Middleware',
+      description='Swift authentication/authorization middleware for keystone that uses "policy" file format.',
       author='CloudWatt',
       author_email='nassim.babaci@cloudwatt.com',
       url='https://git.corp.cloudwatt.com/nassim.babaci/swiftpolicy',
       packages=['swiftpolicy', 'swiftpolicy.openstack', 'swiftpolicy.openstack.common'],
-      requires=['swift(>=1.7)'],
       test_suite='tests',
+      data_files=[('/etc/swift', ['policies/default.json']),],
       entry_points={'paste.filter_factory':
                     ['swiftpolicy=swiftpolicy.swiftpolicy:filter_factory']})
