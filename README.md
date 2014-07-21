@@ -1,8 +1,8 @@
-SwiftPolicy Middleware.
------------------------
+SwiftPolicy Middleware
+----------------------
 
-SwiftPolicy Middleware for OpenStack Swift, allows to use json policy file 
-format to handle swift authorizations.
+The SwiftPolicy Middleware for OpenStack Swift allows to use a JSON policy file 
+to handle swift authorizations.
 
 SwiftPolicy is an adaptation of the keystoneauth middleware here:
 https://github.com/openstack/swift/blob/master/swift/common/middleware/keystoneauth.py
@@ -14,9 +14,9 @@ Install
 1) Install SwiftPolicy  with ``sudo python setup.py install`` or ``sudo python
    setup.py develop``.
 
-2) Alter your proxy-server.conf pipeline to have SwiftPolicy:
+2) Alter your proxy-server.conf pipeline to include SwiftPolicy:
 
-For example, you can use SwiftPolicy in place of keystoneauth middleware:
+For example, you can use SwiftPolicy in place of the keystoneauth middleware:
 
     Change::
 
@@ -28,23 +28,23 @@ For example, you can use SwiftPolicy in place of keystoneauth middleware:
         [pipeline:main]
         pipeline = catch_errors cache swiftpolicy tempauth proxy-server
 
-3) Add to your proxy-server.conf the section for the SwiftPolicy WSGI filter::
+3) Add to your proxy-server.conf the section for the SwiftPolicy WSGI filter.
 
-Policy file is given using ``policy`` option 
+The policy file is set with the ``policy`` option ::
 
     [filter:swift3]
     use = egg:swiftpolicy#swiftpolicy
     policy = %(here)s/default.json
 
-We install along with this middleare a default policy file in /etc/swift/default.json, which make our middleware behaves
-the same way as keystoneauth (for compatibility reasons).
+This middleware comes with a default policy file in /etc/swift/default.json that maintains
+compatibility with keystoneauth.
 
 
 Policy file
 -----------
 
-The policy file will list all possible actions on swift proxy.
-Action's format is: ``<http verbe>_<swift entity>`` (example: "get_container", "put_object", etc).
+The policy file will list all possible actions on a swift proxy.
+Action's syntax is: ``<http verb>_<swift entity>`` (example: "get_container", "put_object", etc).
 
     ...
     "get_container": "rule:allowed_for_user",
@@ -53,9 +53,9 @@ Action's format is: ``<http verbe>_<swift entity>`` (example: "get_container", "
     ...
 
 
-Policy file contains also two specific rules: "swift_owner" "reseller_request", they define
+The policy file contains also two specific rules: "swift_owner" "reseller_request", they are defined
 when swift_owner and reseller_request headers are set to true, as those two values are part
-of the contract between the auth system (more details here: http://docs.openstack.org/developer/swift/overview_auth.html)
+of the contract with the auth system (more details here: http://docs.openstack.org/developer/swift/overview_auth.html)
 
     ...
     "swift_owner": "rule:swift_reseller or rule:swift_operator",
@@ -65,14 +65,14 @@ of the contract between the auth system (more details here: http://docs.openstac
 Example
 -------
 
-* To deny creation of new containers: set put_container to '!':
+* To forbid the creation of new containers: set put_container to '!':
 
         ...
         "get_container": "rule:allowed_for_user",
         "put_container": "!",
         ...
 
-* To restrict creation of new container to users with role "admin":
+* To restrict the creation of new containers to users with the role "admin":
 
         ...
         "get_container": "rule:allowed_for_user",
@@ -82,5 +82,5 @@ Example
 Limitations
 -----------
 
-* swiftpolicy does not support dynamic reload of policies, and thus, swift proxy have
-to be restarted when policy file is updated.
+* swiftpolicy does not support dynamic reload of policies, and thus, the swift proxy has
+to be restarted when the policy file is updated.
