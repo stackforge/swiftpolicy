@@ -90,7 +90,7 @@ class SwiftPolicy(object):
         #self.is_admin = swift_utils.config_true_value(config_is_admin)
         config_overrides = conf.get('allow_overrides', 't').lower()
         self.allow_overrides = swift_utils.config_true_value(config_overrides)
-        self.policy_file = conf.get('policy', "default.json")
+        self.policy_file = conf.get('policy', 'default.json')
 
     def __call__(self, environ, start_response):
         identity = self._keystone_identity(environ)
