@@ -56,15 +56,9 @@ class SwiftPolicy(object):
 
         [filter:swiftpolicy]
         use = egg:swiftpolicy#swiftpolicy
-        operator_roles = admin, swiftoperator
         policy = /path/to/policy.json
 
     This maps tenants to account in Swift.
-
-    The user whose able to give ACL / create Containers permissions
-    will be the one that are inside the ``operator_roles``
-    setting which by default includes the admin and the swiftoperator
-    roles.
 
     If you need to have a different reseller_prefix to be able to
     mix different auth servers you can configure the option
