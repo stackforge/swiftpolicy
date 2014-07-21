@@ -47,7 +47,7 @@ Policy file
 -----------
 
 The policy file will list all possible actions on swift proxy.
-Action's format is: "<http verbe>_<swift entity>" (example: "get_container", "put_object", etc).
+Action's format is: ``<http verbe>_<swift entity>`` (example: "get_container", "put_object", etc).
 
     ...
     "get_container": "rule:allowed_for_user",
@@ -87,4 +87,3 @@ Limitations
 
 * swiftpolicy does not support dynamic laoding of the policy file, and thus, swift proxy have
 to be restarted when policy file is updated.
-
