@@ -1,18 +1,17 @@
 {
     "is_anonymous": "identity:None",
     "is_authenticated": "not rule:is_anonymous",
+
     "swift_reseller": "role:reseller",
-    "swift_operator": "role:admin or role:swiftoperator",
+    "swift_operator": "role:admin or role:Member",
 
     "swift_owner": "rule:swift_reseller or rule:swift_operator",
-
     "reseller_request": "rule:swift_reseller",
+
     "same_tenant": "account:%(account)s",
     "tenant_mismatch": "not rule:same_tenant",
-
     "allowed_for_authenticated": "rule:swift_reseller or acl:check_cross_tenant or acl:check_is_public or (rule:same_tenant and rule:swift_operator) or (rule:same_tenant and acl:check_roles)",
     "allowed_for_anonymous": "is_authoritative:True and acl:check_is_public",
-
     "allowed_for_user": "(rule:is_authenticated and rule:allowed_for_authenticated) or rule:allowed_for_anonymous",
 
     "get_account": "rule:allowed_for_user",
@@ -20,12 +19,14 @@
     "head_account": "rule:allowed_for_user",
     "delete_account": "rule:swift_reseller",
     "options_account": "",
+
     "get_container": "rule:allowed_for_user",
     "put_container": "rule:allowed_for_user",
     "delete_container": "rule:allowed_for_user",
     "post_container": "rule:allowed_for_user",
     "head_container": "rule:allowed_for_user",
     "options_container": "",
+
     "get_object": "rule:allowed_for_user",
     "put_object": "rule:allowed_for_user",
     "copy_object": "rule:allowed_for_user",
