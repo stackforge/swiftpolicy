@@ -54,8 +54,8 @@ Action's format is: ``<http verbe>_<swift entity>`` (example: "get_container", "
 
 
 Policy file contains also two specific rules: "swift_owner" "reseller_request", they define
-when swift_owner and reseller_request headers are set to true, as those two value are part
-of the contract between the auth system and swift.
+when swift_owner and reseller_request headers are set to true, as those two values are part
+of the contract between the auth system (more details here: http://docs.openstack.org/developer/swift/overview_auth.html)
 
     ...
     "swift_owner": "rule:swift_reseller or rule:swift_operator",
