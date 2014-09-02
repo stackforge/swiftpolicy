@@ -32,7 +32,7 @@ For example, you can use SwiftPolicy in place of the keystoneauth middleware:
 
 The policy file is set with the ``policy`` option ::
 
-    [filter:swift3]
+    [filter:swiftpolicy]
     use = egg:swiftpolicy#swiftpolicy
     policy = %(here)s/default.json
 
