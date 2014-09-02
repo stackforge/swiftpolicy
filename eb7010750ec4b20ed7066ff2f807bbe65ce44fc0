@@ -1,0 +1,8 @@
+Verified+2: Jenkins
+Code-Review+2: Ala Rezmerita <ala.rezmerita@cloudwatt.com>
+Workflow+1: Ala Rezmerita <ala.rezmerita@cloudwatt.com>
+Submitted-by: Jenkins
+Submitted-at: Tue, 02 Sep 2014 08:28:25 +0000
+Reviewed-on: https://review.openstack.org/118266
+Project: stackforge/swiftpolicy
+Branch: refs/heads/master
