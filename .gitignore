@@ -1,6 +1,0 @@
-*.egg-info
-*.pyc
-.idea
-build/
-dist/
-.tox
